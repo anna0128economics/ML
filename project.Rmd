@@ -1,0 +1,969 @@
+---
+title: "Untitled"
+author: "Xiaomeng Chen "
+date: "2022/1/6"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+```
+
+## inmport data
+```{r}
+library(haven)
+X111 <- read_dta("~/Desktop/lll/222.dta")
+dim(X111)
+data<-data.frame(X111)
+options(scipen = 200)  ##设置输出小数点位数
+options(digits = 5) 
+```
+
+## overview the missing data
+```{r}
+sum(complete.cases(X111))
+library(mice)
+md.pattern(X111) 
+```
+
+## prepare variables
+```{r}
+library(plyr)
+X111 <- rename(X111,c(PPH="y1",PreE="y2",Sepsis="y3",NN_death="y4"))
+X111 <- rename(X111,c(scoreAIndex="m1",scoreBIndex="m2",scoreCIndex="m3",scoreDIndex="m4",scoreEIndex="m5"))
+
+X111$y1=as.vector(X111$y1)
+X111$y2=as.vector(X111$y2)
+X111$y3=as.vector(X111$y3)
+X111$y4=as.vector(X111$y4)
+X111$m1=as.vector(X111$m1)
+X111$m2=as.vector(X111$m2)
+X111$m3=as.vector(X111$m3)
+X111$m4=as.vector(X111$m4)
+X111$m5=as.vector(X111$m5)
+X111$D1=as.vector(X111$outputGroup)
+X111$D2=as.vector(X111$inputGroup)
+X111$pph1=as.vector(X111$ParOxy)
+X111$pph2=as.vector(X111$medToStopBleed)
+X111$pph3=as.vector(X111$pushOnAb)
+X111$pph4=as.vector(X111$manualPlacenta)
+X111$PPH=as.vector(X111$PPH)
+attach(X111)
+controls<-as.matrix(cbind(mothEdu,Q1809,district2,enumerator,mothAge,prevBP,prevAsthma,prevStomachSurgery,prevOther_conditions,firstPreg,numPrevPreg,numChildrenBirthed,prevSBAbortion,householdOwnsLand,ownBPLCard,hohReligion_2,hohReligion_BigOther,female,U_ID
+))
+X111$U_ID<-as.factor(X111$U_ID) ##只有factor自动生成虚拟变量
+```
+
+## ols with normal homogeneous standard error
+```{r}
+library(MASS)
+library(ISLR2)
+vec1 = c()
+vec2 = c()
+vec3 = c()
+vec4 = c()
+for (i in c("y1","y2","y3","y4")) {
+  formu1 = paste0(i, "~", "D1+D2+controls")
+  fit1 = lm(formu1, data = X111)
+  vec1 = c(vec1, fit1$coefficients[2])
+  vec2=c(vec2, summary(fit1)$coefficients[2,4])
+  vec3=c(vec3, fit1$coefficients[3])
+  vec4=c(vec4, summary(fit1)$coefficients[3,4])
+  m<-rbind(vec1,vec2, vec3, vec4)
+  rnames=c("coef_D1","p_D1","coef_D2","p_D2")
+  cnames=c("y1","y2","y3","y4")
+
+rownames(m)=rnames
+}
+k<-as.matrix(m)
+ rnames=c("coef_D1","p_D1","coef_D2","p_D2")
+  
+colnames(k)=cnames
+k
+```
+
+## roubust ols
+```{r}                  
+myfunction<-function(i){
+  a<-i$coefficients[c("outputGroup","inputGroup")]
+  b<-i$std.error[c("outputGroup","inputGroup")]
+  c<-i$p.value[c("outputGroup","inputGroup")]
+  coef1<-rbind(a,b,c)
+  cname<-c("output","input")
+  rname<-c("coef","se","p-value")
+  colnames(coef1)<-cname
+  rownames(coef1)<-rname
+  print(coef1)
+}
+```
+
+
+```{r}
+library(estimatr)
+robust_y1 <- lm_robust(y1~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+robust_y2 <- lm_robust(y2~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+robust_y3 <- lm_robust(y3~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+robust_y4 <- lm_robust(y4~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+myfunction(robust_y1)
+myfunction(robust_y2)
+myfunction(robust_y3)
+myfunction(robust_y4)
+```
+
+
+hdm包：https://cran.r-project.org/web/packages/hdm/vignettes/hdm.pdf
+## Double Lasso for treatments
+```{r}
+controls<-as.matrix(cbind(mothEdu,Q1809,district2,enumerator,mothAge,prevBP,prevAsthma,prevStomachSurgery,prevOther_conditions,firstPreg,numPrevPreg,numChildrenBirthed,prevSBAbortion,householdOwnsLand,ownBPLCard,hohReligion_2,hohReligion_BigOther,female,U_ID))
+library(hdm)
+y_s <- c("y1", "y2", "y3", "y4")
+D_s <- c("D1", "D2")
+i <- 1
+for (yy in y_s) {
+  for (dd in D_s) {
+    name1 = paste0("effect", i)
+    assign(name1, rlassoEffect(controls,get(yy),get(dd),method="double selection"))
+    i = i + 1
+  }
+}
+```
+
+
+```{r}
+double<-data.frame(matrix(NA, nrow = 2, ncol = 8)) 
+cnames=c("coef","p")
+colnames(double)=cnames
+
+myfunction2<-function(i){
+  a<-i$alpha
+  b<-i$pval
+  double=rbind(a,b)
+  rnames=c("coef","p")
+rownames(double)=rnames
+  print(double)
+}
+```
+
+
+```{r}
+myfunction2(effect1)
+myfunction2(effect2)
+myfunction2(effect3)
+myfunction2(effect4)
+myfunction2(effect5)
+myfunction2(effect6)
+myfunction2(effect7)
+myfunction2(effect8)
+```
+
+## estimate propensity score with logit (flexible logit with quatratic terms)
+```{r}
+library(AER)
+logit=glm(D1~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=X111,family = binomial(link = "logit"))
+coeftest(logit,vcov=vcovHC(logit,type="HC0"))
+length(which(logit$fitted.values<0.2 | logit$fitted.values>0.8)) 
+```
+there are 834 observations whose propensity scores are far from 0.5, which should have been around 0.5 if randomization is successful.
+
+## estimate propensity score with logit (non-flexible logit with first degree term only)
+```{r}
+library(AER)
+logit=glm(D1~mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=X111,family = binomial(link = "logit"))
+coeftest(logit,vcov=vcovHC(logit,type="HC0"))
+length(which(logit$fitted.values<0.2 | logit$fitted.values>0.8)) 
+```
+Using non-flexible logit, the propensity score implies the randomization is successful in the experiment
+
+
+## prepare data with no missing value
+```{r}
+x2<-X111[complete.cases(X111[,c('y1','y2','y3','y4')]),]
+sum(is.na(x2$y1))
+x2$y1=as.numeric(x2$y1)
+```
+
+## 检查剔除缺失值后treatment balance
+```{r}
+x3<-na.omit(x2)
+lm_balance1<- lm_robust(D1~mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = x3, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(x3$U_ID))) 
+which(lm_balance1$p.value<0.01)  ##查看显著变量
+```
+
+```{r}
+lm_balance2<- lm_robust(D2~mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female+U_ID, data = x3, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(x3$U_ID))) 
+which(lm_balance2$p.value<0.01) 
+```
+
+
+
+
+## ipw_D1_y1
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D1~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y1*DATA1$D1)/p1 - (DATA1$y1*(1-DATA1$D1)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+
+```{r}
+ind=seq(1:nrow(x2))
+IPW_ATE=ipw.ate(x2,indices=ind)
+IPW_ATE
+```
+
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x2,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+
+
+## ipw_D2_y1
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y1*DATA1$D2)/p1 - (DATA1$y1*(1-DATA1$D2)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+
+## ipw_D1_y2
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y2*DATA1$D1)/p1 - (DATA1$y2*(1-DATA1$D1)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+## ipw_D2_y2
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y2*DATA1$D2)/p1 - (DATA1$y2*(1-DATA1$D2)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+## ipw_D1_y3
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y3*DATA1$D1)/p1 - (DATA1$y3*(1-DATA1$D1)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+## ipw_D2_y3
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y3*DATA1$D2)/p1 - (DATA1$y3*(1-DATA1$D2)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+
+## ipw_D1_y4
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y4*DATA1$D1)/p1 - (DATA1$y4*(1-DATA1$D1)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+## ipw_D2_y4
+```{r}
+ipw.ate<-function(data,indices){
+#indices are needed later for bootstrap samples construction
+DATA=data[indices,]
+# Logit for propensity score
+logit=glm(D2~(mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female)^2,data=DATA,family = binomial(link = "logit"))
+# predicted probabilities = estimated propensity score
+p=predict(logit,type="response")
+#Trim predictions close to zero or one
+ind=which(p>0.05 & p<0.95)
+p1=p[ind]
+DATA1=DATA[ind,]
+# The IPW ATE estimator
+Diff=(DATA1$y4*DATA1$D2)/p1 - (DATA1$y4*(1-DATA1$D2)/(1-p1))
+IPW_ATE=mean(Diff)
+return(IPW_ATE)
+}
+```
+
+```{r}
+ind=seq(1:nrow(x3))
+IPW_ATE=ipw.ate(x3,indices=ind)
+IPW_ATE
+```
+```{r}
+library(boot)
+set.seed(6064,sample.kind='Rejection')
+IPW_ATE_boot=boot(data=x3,statistic=ipw.ate,R=39)
+IPW_ATE_boot
+```
+
+
+## CATE-D1
+```{r}
+library(grf)
+X=model.matrix(D1~mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+Y=x3$y1
+W=x3$D1
+CF=causal_forest(X,Y,W,seed = 6064)
+```
+
+
+```{r}
+CF_var_imp<-variable_importance(CF)
+selected.vars <- which(CF_var_imp > mean(CF_var_imp))
+Importance=round(CF_var_imp[selected.vars],digits=3)
+names(Importance)<-colnames(X)[selected.vars]
+sort(Importance, decreasing=TRUE)
+```
+
+
+```{r}
+library(Hmisc) 
+myvars <- c("mothAge", "numPrevPreg") 
+describe(x3[myvars])
+```
+## age<24 (mean age)
+```{r}
+CATE_mothAge=average_treatment_effect(CF,target.sample = "overlap",subset=(x3$mothAge<24))
+Estimate=CATE_mothAge[1]
+Std.err=CATE_mothAge[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge<24: ",round(Estimate,digits=3), "
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+```
+
+
+
+## age>=24 (mean age)
+```{r}
+average_treatment_effect(CF,target.sample = "treated",subset=(x3$mothAge>=24))
+CATE_mothAge=average_treatment_effect(CF,target.sample = "treated",subset=(x3$mothAge>=24))
+Estimate=CATE_mothAge[1]
+Std.err=CATE_mothAge[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge>=24: ",round(Estimate,digits=3), "
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+```
+
+## number of previous pregnancy<2
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$numPrevPreg<2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for numPrevPreg<2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+
+```
+
+## number of previous pregnancy>=2
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$numPrevPreg>=2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for numPrevPreg>=2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+
+```
+
+
+## number of previous pregnancy>=2 $ age<24
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$mothAge<=24 & x3$numPrevPreg<2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge<=24, numPrevPreg<2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+```
+
+## CATE-D2
+```{r}
+X=model.matrix(D2~mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+Y=x3$y1
+W=x3$D2
+CF=causal_forest(X,Y,W,seed = 6064)
+```
+
+
+```{r}
+CF_var_imp<-variable_importance(CF)
+selected.vars <- which(CF_var_imp > mean(CF_var_imp))
+Importance=round(CF_var_imp[selected.vars],digits=3)
+names(Importance)<-colnames(X)[selected.vars]
+sort(Importance, decreasing=TRUE)
+```
+
+
+## age<24 (mean age)
+```{r}
+CATE_mothAge=average_treatment_effect(CF,target.sample = "overlap",subset=(x3$mothAge<24))
+Estimate=CATE_mothAge[1]
+Std.err=CATE_mothAge[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge<24: ",round(Estimate,digits=3), "
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+```
+
+
+
+## age>=24 (mean age)
+```{r}
+average_treatment_effect(CF,target.sample = "treated",subset=(x3$mothAge>=24))
+CATE_mothAge=average_treatment_effect(CF,target.sample = "treated",subset=(x3$mothAge>=24))
+Estimate=CATE_mothAge[1]
+Std.err=CATE_mothAge[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge>=24: ",round(Estimate,digits=3), "
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+```
+
+## number of previous pregnancy<2
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$numPrevPreg<2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for numPrevPreg<2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+
+```
+
+## number of previous pregnancy>=2
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$numPrevPreg>=2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for numPrevPreg>=2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+
+
+```
+
+
+## number of previous pregnancy>=2 $ age>=24
+```{r}
+CATE_mult=average_treatment_effect(CF,target.sample = "overlap",subset=
+(x3$mothAge>=24 & x3$numPrevPreg>=2))
+Estimate=CATE_mult[1]
+Std.err=CATE_mult[2] 
+T=abs(Estimate/Std.err)
+pvalue=(2*(1-pnorm(T)))
+cat("CATE for mothAge>=24, numPrevPreg>=2, with prio>1 : ",round(Estimate,digits=3),"
+Std.err: ",round(Std.err,digits=3), " p-value: ",round(pvalue,digits=3))
+```
+
+
+
+
+# Mediation model
+
+## D1,D2->pph1 (lasso)
+```{r}
+x <- model.matrix(pph1~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1]  
+y <-x3$pph1
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+grid <- 10^seq(10, -2, length = 100)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+bestlam
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+q1<-lasso.coef[lasso.coef!=0]  ##找系数不为0的变量
+q1
+```
+D1,D2 has little effect on pph1, didn't survive lasso
+
+## D1->pph1 (post-lasso) 为了计算indirect effect
+```{r}
+post_ols1 <- lm_robust(pph1~inputGroup+outputGroup+Q1809+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+prevSBAbortion+householdOwnsLand+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols1$coefficients[2]
+post_ols1$std.error[2]
+post_ols1$p.value[2]
+post_ols1$coefficients[3]
+post_ols1$std.error[3]
+post_ols1$p.value[3]
+```
+
+
+## pph1--->pph (lasso)
+```{r}
+x <- model.matrix(y1~pph1+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+y <- x3$y1
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+e1<-lasso.coef[lasso.coef!=0]
+e1
+```
+
+## D1,D2,pph1->pph (ols) with controls selected in lasso
+```{r}
+post_ols2 <- lm_robust(y1~pph1+inputGroup+outputGroup+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+prevSBAbortion+householdOwnsLand+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols2$coefficients[2]
+post_ols2$std.error[2]
+post_ols2$p.value[2]
+post_ols2$coefficients[3]
+post_ols2$std.error[3]
+post_ols2$p.value[3]
+post_ols2$coefficients[4]
+post_ols2$std.error[4]
+post_ols2$p.value[4]
+```
+
+
+
+
+
+
+## D1,D2->pph2 (lasso)
+```{r}
+x <- model.matrix(pph2~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1]  
+y <-x3$pph2
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+grid <- 10^seq(10, -2, length = 100)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+bestlam
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+q1<-lasso.coef[lasso.coef!=0]  ##找系数不为0的变量
+q1
+```
+treatment 对pph2的系数为负，pph2对pph的系数为正
+
+## D1,D2->pph2 (post-lasso) 为了计算indirect effect
+```{r}
+post_ols3 <- lm_robust(pph2~inputGroup+outputGroup+Q1809+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+prevSBAbortion+householdOwnsLand+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols3$coefficients[2]
+post_ols3$std.error[2]
+post_ols3$p.value[2]
+post_ols3$coefficients[3]
+post_ols3$std.error[3]
+post_ols3$p.value[3]
+```
+
+
+## pph2--->pph (lasso)
+```{r}
+x <- model.matrix(y1~pph2+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+y <- x3$y1
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+e1<-lasso.coef[lasso.coef!=0]
+e1
+```
+
+## D1,D2,pph2->pph (ols) with controls selected in lasso
+```{r}
+post_ols4 <- lm_robust(y1~pph2+inputGroup+outputGroup+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+householdOwnsLand+hohReligion_2+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols4$coefficients[2]
+post_ols4$std.error[2]
+post_ols4$p.value[2]
+post_ols4$coefficients[3]
+post_ols4$std.error[3]
+post_ols4$p.value[3]
+post_ols4$coefficients[4]
+post_ols4$std.error[4]
+post_ols4$p.value[4]
+```
+
+
+
+
+## D1,D2->pph3 (lasso)
+```{r}
+x <- model.matrix(pph3~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1]  
+y <-x3$pph3
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+grid <- 10^seq(10, -2, length = 100)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+bestlam
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+q1<-lasso.coef[lasso.coef!=0]  
+q1
+```
+
+## D1,D2->pph3 (post lasso)
+```{r}
+post_ols5 <- lm_robust(pph3~inputGroup+outputGroup+mothEdu+district2+prevAsthma+prevStomachSurgery+prevOther_conditions+prevSBAbortion+householdOwnsLand+hohReligion_2+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols5$coefficients[2:3]
+post_ols5$std.error[2:3]
+post_ols5$p.value[2:3]
+```
+
+## pph3--->pph (lasso)
+```{r}
+x <- model.matrix(y1~pph3+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+y <- x3$y1
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+e1<-lasso.coef[lasso.coef!=0]
+e1
+```
+
+## D1,D2,pph3->pph (ols) with controls selected in lasso
+```{r}
+post_ols6 <- lm_robust(y1~pph3+inputGroup+outputGroup+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+householdOwnsLand+hohReligion_2+prevSBAbortion+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols6$coefficients[2:4]
+post_ols6$std.error[2:4]
+post_ols6$p.value[2:4]
+```
+
+
+
+## D1,D2->pph4 (lasso)
+```{r}
+x <- model.matrix(pph4~inputGroup+outputGroup+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1]  
+y <-x3$pph4
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+grid <- 10^seq(10, -2, length = 100)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+bestlam
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+q1<-lasso.coef[lasso.coef!=0]  
+q1
+```
+
+## D1,D2->pph4 (post lasso)
+```{r}
+post_ols7 <- lm_robust(pph4~inputGroup+outputGroup+mothEdu+Q1809+prevAsthma+enumerator+firstPreg+prevSBAbortion+ownBPLCard +U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols7$coefficients[2:3]
+post_ols7$std.error[2:3]
+post_ols7$std.error[2:3]
+```
+
+
+## pph4--->pph (lasso)
+```{r}
+x <- model.matrix(y1~pph4+mothEdu+Q1809+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+numChildrenBirthed+prevSBAbortion+householdOwnsLand+ownBPLCard+hohReligion_2+hohReligion_BigOther+female,data=x3)[,-1] 
+y <- x3$y1
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x) / 2)
+test <- (-train)
+y.test <- y[test]
+library(glmnet)
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s = bestlam,
+newx = x[test, ])
+mean((lasso.pred - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[, ]
+e1<-lasso.coef[lasso.coef!=0]
+e1
+```
+
+## D1,D2,pph4->pph (ols) with controls selected in lasso
+```{r}
+post_ols8 <- lm_robust(y1~pph4+inputGroup+outputGroup+mothEdu+district2+enumerator+mothAge+prevBP+prevAsthma+prevStomachSurgery+prevOther_conditions+firstPreg+numPrevPreg+householdOwnsLand+hohReligion_2+prevSBAbortion+hohReligion_BigOther+female+U_ID, data = X111, 
+                   clusters = U_ID, 
+                   se_type = 'stata', 
+                   subset = (!is.na(X111$U_ID))) 
+post_ols8$coefficients[2:4]
+post_ols8$std.error[2:4]
+post_ols8$p.value[2:4]
+```
+
+
