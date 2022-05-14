@@ -1,6 +1,5 @@
-html文件打开是乱码，要在乱码网页的网址前面加上"http://htmlpreview.github.io/?"   
-即可看到编译后的markdown. 
-或直接点击网页：http://htmlpreview.github.io/?https://raw.githubusercontent.com/anna0128economics/ML/main/project.html?token=GHSAT0AAAAAABRVDAYOWRA4MU7WNLFNBKREYQNXIFQ   
-ML__pdf文件是正式作业，可点击下载.   
-pdf的latex在线代码在这个网址：https://www.overleaf.com/read/txtzgvnxvchz.  
-ML_ECO包含一个经济学中ml的应用的综述大纲，下载可看高清图
+this is a data-reanalysis of a field experiment in a published paper with publiced data.    
+the orginal causal identification adopt the traditional econometric apporaches, while I perform a sreis of causal machine learning methods to replicate the result in the paper. But there is something unexpected and intriguing happened in my analysis, which implies the difference between different empirical methods. 
+click this link to view the html：http://htmlpreview.github.io/?https://raw.githubusercontent.com/anna0128economics/ML/main/project.html?token=GHSAT0AAAAAABRVDAYOWRA4MU7WNLFNBKREYQNXIFQ     
+latex：https://www.overleaf.com/read/txtzgvnxvchz.  
+
